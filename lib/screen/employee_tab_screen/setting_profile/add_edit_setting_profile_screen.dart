@@ -1,46 +1,32 @@
+// lib/ui/employee_tab/add_edit_setting_profile_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Required for FilteringTextInputFormatter
 import 'package:get/get.dart';
+import 'package:time_attendance/model/employee_tab_model/employee_complete_model.dart';
 import 'package:time_attendance/model/employee_tab_model/settingprofile.dart';
 import 'package:time_attendance/controller/employee_tab_controller/settingprofile_controller.dart';
 import 'package:time_attendance/widget/reusable/tooltip/help_tooltip_button.dart';
 
 // --- Enums for Radio Button Groups ---
 enum PresentOnWeeklyOffHolidayOptions { overTime, compensatoryOff, present }
-
 enum LeaveContainsWeeklyOffOptions { leave, weeklyOff }
-
 enum LeaveContainsHolidayOptions { leave, holiday }
-
 enum WeeklyOffHolidaySameDayOptions { weeklyOff, holiday }
-
 enum AbsentBeforeAfterHolidayOptions { holiday, absent }
-
 enum PunchTypeOptions { doubleFL, multipleEO, single }
-
 enum WorkMinutesCalculationOptions { byShiftwise, byEmployeewise }
-
 enum OverTimeStartOptions { afterFullDay, atExactShiftEnd }
-
-// --- NEW: Enums for Additional Settings ---
 enum OverTimeCalculationOptions { afterHour, afterHalfHour, none }
-
 enum ForcePunchOutOptions {
   defaultTime,
   byShiftOutTime,
   byAddingHalfDayInTime,
   none
 }
-
-enum LateComingActionOptions { cutFullDay, markAbsent, none }
-
-// --- NEW: Enums for Regular Shift, WeeklyOff, Login Details ---
+enum LateComingActionOptions { cutFullDay, cutHalfDay, markAbsent, none }
 enum ShiftStartDateOptions { employeeJoiningDate, startOfJoiningMonth }
-
 enum ShiftTypeOptions { fix, rotation, autoAssign }
-
 enum WeeklyOffTypeOptions { regular, rotating }
-
 enum WeeklyOffAbsentMarkingOptions { prefix, postfix, aWoffA, none }
 
 class AddEditSettingProfileScreen extends StatefulWidget {
@@ -65,7 +51,7 @@ class _AddEditSettingProfileScreenState
 
   // --- Work Settings State ---
   PresentOnWeeklyOffHolidayOptions _presentOnWeeklyOffHoliday =
-      PresentOnWeeklyOffHolidayOptions.compensatoryOff;
+      PresentOnWeeklyOffHolidayOptions.present;
   LeaveContainsWeeklyOffOptions _leaveContainsWeeklyOff =
       LeaveContainsWeeklyOffOptions.leave;
   LeaveContainsHolidayOptions _leaveContainsHoliday =
@@ -85,12 +71,10 @@ class _AddEditSettingProfileScreenState
       TextEditingController();
   final TextEditingController _singlePunchOutTimeMMController =
       TextEditingController();
-
   final TextEditingController _allowedLateComingMinutesController =
       TextEditingController(text: "15");
   final TextEditingController _allowedEarlyGoingMinutesController =
       TextEditingController(text: "15");
-
   WorkMinutesCalculationOptions _workMinutesCalculation =
       WorkMinutesCalculationOptions.byEmployeewise;
 
@@ -106,52 +90,52 @@ class _AddEditSettingProfileScreenState
       OverTimeStartOptions.afterFullDay;
   final TextEditingController _otStartsMinsController =
       TextEditingController(text: "490");
-  // --- NEW: Additional Settings State ---
+
+  // --- Additional Settings State ---
   OverTimeCalculationOptions _additionalOverTimeCalcOption =
-      OverTimeCalculationOptions
-          .none; // Renamed to avoid conflict if any other OT calc exists
+      OverTimeCalculationOptions.none;
   bool _isEmployeeAllowedToTakeBreak = false;
   bool _subtractLunchFromFullDay = false;
   bool _subtractLunchFromHalfDay = false;
   bool _calculateLateEarlyOnWeeklyOff = false;
-
   ForcePunchOutOptions _forcePunchOutOption =
       ForcePunchOutOptions.byAddingHalfDayInTime;
   final TextEditingController _defaultForcePunchOutHHController =
       TextEditingController();
   final TextEditingController _defaultForcePunchOutMMController =
       TextEditingController();
-
   bool _isLateComingDeductionAllowed = false;
   final TextEditingController _lateComingForDaysController =
-      TextEditingController(text: "-1"); // Default as per image
+      TextEditingController(text: "-1");
   LateComingActionOptions _lateComingAction = LateComingActionOptions.none;
   bool _isRepeatLateComingDeductionAllowed = false;
 
-  // --- NEW: Regular Shift State ---
+  // --- Regular Shift State ---
   ShiftStartDateOptions _shiftStartDateOption =
-      ShiftStartDateOptions.startOfJoiningMonth;
-  ShiftTypeOptions _shiftTypeOption = ShiftTypeOptions.autoAssign;
-  String? _selectedFixShift; // For "Fix" shift type dropdown
+      ShiftStartDateOptions.employeeJoiningDate;
+  ShiftTypeOptions _shiftTypeOption = ShiftTypeOptions.fix;
+  String? _selectedFixShift;
   final TextEditingController _shiftConstantDaysController =
       TextEditingController();
-  String? _selectedShiftPattern; // For "Rotation" shift type dropdown
+  String? _selectedShiftPattern;
 
-  // --- NEW: WeeklyOff Details State ---
+  // --- WeeklyOff Details State ---
   WeeklyOffTypeOptions _weeklyOffTypeOption = WeeklyOffTypeOptions.regular;
-  String? _selectedFirstWeeklyOff = "Sunday"; // Default as per image
-  String? _selectedSecondWeeklyOff = "None"; // Default as per image
-  String? _selectedFullDayHalfDay = "FullDay"; // Default as per image
+  String? _selectedFirstWeeklyOff = "Sunday";
+  String? _selectedSecondWeeklyOff = "None";
+  String? _selectedFullDayHalfDay = "FullDay";
 
-  // --- NEW: Employee Login Details State ---
-  bool _canUseNonBiometricDevice = false;
-  bool _viewRights = true; // Default as per image
+  // --- Employee Login Details State ---
+  bool _isLoginEnabled = false;
+  bool _canPunchInGeoFence = false;
+  bool _canPunchFromHome = false;
+  bool _viewRights = true;
   bool _canApplyForLeave = false;
   bool _canApplyForTour = false;
   bool _canApplyForManualAttendance = false;
   bool _canApplyForOutDoorDuty = false;
 
-  // Placeholder data for dropdowns - replace with actual data
+  // Placeholder data for dropdowns
   final List<String> _shiftsList = ["causal", "General Shift", "Night Shift"];
   final List<String> _shiftPatternsList = [
     "ShiftPatternName118",
@@ -186,12 +170,7 @@ class _AddEditSettingProfileScreenState
       _profileNameController.text = widget.profile!.profileName;
       _descriptionController.text = widget.profile!.description;
       _isDefaultProfile = widget.profile!.isDefaultProfile;
-
-      // Initialize the WeeklyOff absent marking option
-      if (widget.profile?.employeeSetting != null) {
-        // TODO: Set based on profile setting when API is available
-        // _weeklyOffAbsentMarking = WeeklyOffAbsentMarkingOptions.aWoffA;
-      }
+      // TODO: Populate all other fields from widget.profile for edit mode in the future
     }
   }
 
@@ -199,8 +178,6 @@ class _AddEditSettingProfileScreenState
   void dispose() {
     _profileNameController.dispose();
     _descriptionController.dispose();
-
-    // Dispose new controllers
     _absentDaysForWeeklyOffController.dispose();
     _singlePunchOutTimeHHController.dispose();
     _singlePunchOutTimeMMController.dispose();
@@ -210,16 +187,86 @@ class _AddEditSettingProfileScreenState
     _halfDayMinsController.dispose();
     _otGraceMinsController.dispose();
     _otStartsMinsController.dispose();
-    // --- NEW: Dispose Additional Settings controllers ---
     _defaultForcePunchOutHHController.dispose();
     _defaultForcePunchOutMMController.dispose();
     _lateComingForDaysController.dispose();
-    // --- NEW: Dispose new controllers ---
     _shiftConstantDaysController.dispose();
     super.dispose();
   }
 
-  // Helper widget for Radio Button Groups
+  // region Helper Methods for Data Conversion
+  String _getPresentOnWOffHolidayStringValue() {
+    switch (_presentOnWeeklyOffHoliday) {
+      case PresentOnWeeklyOffHolidayOptions.overTime:
+        return EmployeeSettings.taOverTime;
+      case PresentOnWeeklyOffHolidayOptions.compensatoryOff:
+        return EmployeeSettings.taCOff;
+      case PresentOnWeeklyOffHolidayOptions.present:
+        return EmployeeSettings.taPresent;
+    }
+  }
+
+  int _getPunchTypeEnumValue() {
+    switch (_punchType) {
+      case PunchTypeOptions.single:
+        return CsPunchType.Single.index + 1;
+      case PunchTypeOptions.doubleFL:
+        return CsPunchType.Double.index + 1;
+      case PunchTypeOptions.multipleEO:
+        return CsPunchType.Multiple.index + 1;
+    }
+  }
+
+  int _getOverTimeCalcEnumValue() {
+    switch (_additionalOverTimeCalcOption) {
+      case OverTimeCalculationOptions.none:
+        return CsOverTimeCalculation.None.index + 1;
+      case OverTimeCalculationOptions.afterHalfHour:
+        return CsOverTimeCalculation.HalfHourly.index + 1;
+      case OverTimeCalculationOptions.afterHour:
+        return CsOverTimeCalculation.Hourly.index + 1;
+    }
+  }
+
+  int _getForcePunchOutEnumValue() {
+    switch (_forcePunchOutOption) {
+      case ForcePunchOutOptions.none:
+        return CsForcePunchOutType.None.index + 1;
+      case ForcePunchOutOptions.defaultTime:
+        return CsForcePunchOutType.ByDefault.index + 1;
+      case ForcePunchOutOptions.byShiftOutTime:
+        return CsForcePunchOutType.ByShift.index + 1;
+      case ForcePunchOutOptions.byAddingHalfDayInTime:
+        return CsForcePunchOutType.ByHalfDayMinutes.index + 1;
+    }
+  }
+
+  int _getLateComingActionEnumValue() {
+    switch (_lateComingAction) {
+      case LateComingActionOptions.none:
+        return CsLateComingAction.None.index + 1;
+      case LateComingActionOptions.cutFullDay:
+        return CsLateComingAction.CutFullDayMinutes.index + 1;
+      case LateComingActionOptions.cutHalfDay:
+        return CsLateComingAction.CutHalfDayMinutes.index + 1;
+      case LateComingActionOptions.markAbsent:
+        return CsLateComingAction.MarkAbsent.index + 1;
+    }
+  }
+
+  int _getShiftTypeEnumValue() {
+    switch (_shiftTypeOption) {
+      case ShiftTypeOptions.fix:
+        return CsShiftType.Fix.index + 1;
+      case ShiftTypeOptions.autoAssign:
+        return CsShiftType.AutoShift.index + 1;
+      case ShiftTypeOptions.rotation:
+        return CsShiftType.Rotation.index + 1;
+    }
+  }
+  // endregion
+
+  // region UI Builder Widgets
   Widget _buildRadioWidget<T>({
     required String label,
     required T groupValue,
@@ -268,44 +315,13 @@ class _AddEditSettingProfileScreenState
     );
   }
 
-  // Helper for Checkboxes in a row
-  Widget _buildCheckboxRowItem(
-      String title, bool value, ValueChanged<bool?> onChanged) {
-    return Flexible(
-      child: InkWell(
-        onTap: () => onChanged(!value),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Checkbox(
-                value: value,
-                onChanged: onChanged,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                visualDensity: VisualDensity.compact),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(fontSize: 14),
-                overflow: TextOverflow.ellipsis,
-                maxLines: 4,
-              ),
-            ),
-          ],
-        ),
-      ),  
-    );
-  }
-
-  // Helper for labeled text fields (label above field)
   Widget _buildLabeledTextField(
       String label, TextEditingController controller, String hintText,
       {bool isNumeric = true, int? maxLength}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label,
-            style: const TextStyle(
-                fontSize: 14)), // Adjusted to 14 to match radio labels
+        Text(label, style: const TextStyle(fontSize: 14)),
         const SizedBox(height: 4),
         TextFormField(
           controller: controller,
@@ -333,7 +349,6 @@ class _AddEditSettingProfileScreenState
     );
   }
 
-  // --- NEW: Helper for DropdownButtonFormField ---
   Widget _buildDropdownField<T>({
     required String label,
     required T? value,
@@ -350,17 +365,38 @@ class _AddEditSettingProfileScreenState
           decoration: InputDecoration(
             border: const OutlineInputBorder(),
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 10), // Adjusted for better dropdown appearance
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             hintText: hintText,
           ),
           value: value,
           items: items,
           onChanged: onChanged,
-          isExpanded: true, // Makes the dropdown take full available width
+          isExpanded: true,
         ),
       ],
+    );
+  }
+
+  Widget _buildCheckboxRow(
+      String title, bool value, ValueChanged<bool?> onChanged) {
+    return InkWell(
+      onTap: () => onChanged(!value),
+      child: Row(
+        children: [
+          Checkbox(
+              value: value,
+              onChanged: onChanged,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -427,39 +463,37 @@ class _AddEditSettingProfileScreenState
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Use Flexible for the long text to avoid overflow
-              Flexible(
-          child: Text(
-            "Number of absent days that are either to be prefixed or postfixed to WeeklyOff",
-            style: TextStyle(fontSize: 14),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 4,
-          ),
+              const Flexible(
+                child: Text(
+                  "Number of absent days that are either to be prefixed or postfixed to WeeklyOff",
+                  style: TextStyle(fontSize: 14),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 4,
+                ),
               ),
               const SizedBox(width: 8),
               SizedBox(
-          width: 60,
-          child: TextFormField(
-            controller: _absentDaysForWeeklyOffController,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            decoration: const InputDecoration(
-                isDense: true,
-                border: OutlineInputBorder(),
-                contentPadding:
-              EdgeInsets.symmetric(horizontal: 8, vertical: 10)),
-            textAlign: TextAlign.left,
-          ),
+                width: 60,
+                child: TextFormField(
+                  controller: _absentDaysForWeeklyOffController,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: const InputDecoration(
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                      contentPadding:
+                          EdgeInsets.symmetric(horizontal: 8, vertical: 10)),
+                  textAlign: TextAlign.left,
+                ),
               ),
               const SizedBox(width: 8),
-              // Use Flexible for the trailing text as well
-              Flexible(
-          child: Text(
-            ', to mark WeeklyOff as "Absent" :',
-            style: TextStyle(fontSize: 14),
-            overflow: TextOverflow.ellipsis,
-            maxLines: 2,
-          ),
+              const Flexible(
+                child: Text(
+                  ', to mark WeeklyOff as "Absent" :',
+                  style: TextStyle(fontSize: 14),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
               ),
             ],
           ),
@@ -474,6 +508,7 @@ class _AddEditSettingProfileScreenState
               MapEntry("Prefix", WeeklyOffAbsentMarkingOptions.prefix),
               MapEntry("Postfix", WeeklyOffAbsentMarkingOptions.postfix),
               MapEntry("A-Woff-A", WeeklyOffAbsentMarkingOptions.aWoffA),
+              MapEntry("None", WeeklyOffAbsentMarkingOptions.none),
             ],
             onChanged: (val) => setState(() => _weeklyOffAbsentMarking = val!),
           ),
@@ -587,15 +622,11 @@ class _AddEditSettingProfileScreenState
                   _buildLabeledTextField(
                       "Half Day Mins:*", _halfDayMinsController, "240"),
                   const SizedBox(height: 4),
-                  CheckboxListTile(
-                    title: const Text("Is Employee Allowed to do OverTime.",
-                        style: TextStyle(fontSize: 14)),
-                    value: _isEmployeeAllowedToDoOverTime,
-                    onChanged: (val) =>
+                  _buildCheckboxRow(
+                    "Is Employee Allowed to do OverTime.",
+                    _isEmployeeAllowedToDoOverTime,
+                    (val) =>
                         setState(() => _isEmployeeAllowedToDoOverTime = val!),
-                    controlAffinity: ListTileControlAffinity.leading,
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
                   ),
                   if (_isEmployeeAllowedToDoOverTime)
                     Padding(
@@ -639,17 +670,15 @@ class _AddEditSettingProfileScreenState
     );
   }
 
-  // --- NEW: Method to build Additional Settings ExpansionTile ---
   Widget _buildAdditionalSettingsExpansionTile() {
     return ExpansionTile(
       title: const Text("Additional Settings",
           style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87)),
-      initiallyExpanded: false, // Set to true for easier development/testing
+      initiallyExpanded: false,
       childrenPadding:
           const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       tilePadding: const EdgeInsets.symmetric(horizontal: 16.0),
       children: [
-        // Over Time Calculations
         _buildRadioWidget<OverTimeCalculationOptions>(
           label: "Over Time Calculations:",
           groupValue: _additionalOverTimeCalcOption,
@@ -665,34 +694,14 @@ class _AddEditSettingProfileScreenState
               setState(() => _additionalOverTimeCalcOption = val!),
         ),
         const SizedBox(height: 12),
-
-        // Breaks
-        Row(
-          children: [
-            const Text("Breaks:",
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-            const SizedBox(width: 8), // Spacing between "Breaks:" and checkbox
-            Checkbox(
-              value: _isEmployeeAllowedToTakeBreak,
-              onChanged: (val) =>
-                  setState(() => _isEmployeeAllowedToTakeBreak = val!),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-            ),
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() => _isEmployeeAllowedToTakeBreak =
-                    !_isEmployeeAllowedToTakeBreak),
-                child: const Text("Is Employee Allowed to take break.",
-                    style: TextStyle(fontSize: 14)),
-              ),
-            ),
-          ],
+        _buildCheckboxRow(
+          "Is Employee Allowed to take break.",
+          _isEmployeeAllowedToTakeBreak,
+          (val) => setState(() => _isEmployeeAllowedToTakeBreak = val!),
         ),
         if (_isEmployeeAllowedToTakeBreak)
           Padding(
-            padding: const EdgeInsets.only(
-                left: 24.0, top: 8.0), // Indent conditional part
+            padding: const EdgeInsets.only(left: 24.0, top: 8.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -702,50 +711,24 @@ class _AddEditSettingProfileScreenState
                       style:
                           TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
                 ),
-                Row(
-                  children: [
-                    _buildCheckboxRowItem(
-                        "Subtract Lunch Minutes from Fullday Hours work.",
-                        _subtractLunchFromFullDay,
-                        (val) =>
-                            setState(() => _subtractLunchFromFullDay = val!)),
-                    const SizedBox(width: 16),
-                    _buildCheckboxRowItem(
-                        "Subtract Lunch Minutes from Halfday Hours work.",
-                        _subtractLunchFromHalfDay,
-                        (val) =>
-                            setState(() => _subtractLunchFromHalfDay = val!)),
-                  ],
-                ),
+                _buildCheckboxRow(
+                    "Subtract Lunch Minutes from Fullday Hours work.",
+                    _subtractLunchFromFullDay,
+                    (val) => setState(() => _subtractLunchFromFullDay = val!)),
+                _buildCheckboxRow(
+                    "Subtract Lunch Minutes from Halfday Hours work.",
+                    _subtractLunchFromHalfDay,
+                    (val) => setState(() => _subtractLunchFromHalfDay = val!)),
               ],
             ),
           ),
         const SizedBox(height: 12),
-
-        // Weekly Off Calculation
-        Row(
-          children: [
-            Checkbox(
-              value: _calculateLateEarlyOnWeeklyOff,
-              onChanged: (val) =>
-                  setState(() => _calculateLateEarlyOnWeeklyOff = val!),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-            ),
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() => _calculateLateEarlyOnWeeklyOff =
-                    !_calculateLateEarlyOnWeeklyOff),
-                child: const Text(
-                    "Calculate Late Coming Minutes and Early Going Minutes, If Employee present on Weekly Off",
-                    style: TextStyle(fontSize: 14)),
-              ),
-            ),
-          ],
+        _buildCheckboxRow(
+          "Calculate Late Coming Minutes and Early Going Minutes, If Employee present on Weekly Off",
+          _calculateLateEarlyOnWeeklyOff,
+          (val) => setState(() => _calculateLateEarlyOnWeeklyOff = val!),
         ),
         const SizedBox(height: 12),
-
-        // Force Punch Out
         _buildRadioWidget<ForcePunchOutOptions>(
           label: 'Force Punch Out, if "No-Out" occurs (No out log found) :',
           groupValue: _forcePunchOutOption,
@@ -790,43 +773,15 @@ class _AddEditSettingProfileScreenState
             ),
           ),
         const SizedBox(height: 12),
-
-        // Late Coming CutOff Label
-        Padding(
-          padding: const EdgeInsets.only(
-              top: 0.0, bottom: 4.0), // Adjusted top padding
-          child: Row(
-            children: [
-              const Text("Late Coming CutOff:",
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-              const SizedBox(width: 4),
-              Text("(Implementation pending)",
-                  style: TextStyle(
-                      fontSize: 13,
-                      fontStyle: FontStyle.italic,
-                      color: Colors.grey.shade600)),
-            ],
-          ),
+        const Padding(
+          padding: EdgeInsets.only(bottom: 4.0),
+          child: Text("Late Coming CutOff:",
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         ),
-        // Is Coming Late Deduction Allowed Checkbox
-        Row(
-          children: [
-            Checkbox(
-              value: _isLateComingDeductionAllowed,
-              onChanged: (val) =>
-                  setState(() => _isLateComingDeductionAllowed = val!),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-            ),
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() => _isLateComingDeductionAllowed =
-                    !_isLateComingDeductionAllowed),
-                child: const Text("Is Coming Late Deduction Allowed",
-                    style: TextStyle(fontSize: 14)),
-              ),
-            ),
-          ],
+        _buildCheckboxRow(
+          "Is Coming Late Deduction Allowed",
+          _isLateComingDeductionAllowed,
+          (val) => setState(() => _isLateComingDeductionAllowed = val!),
         ),
         if (_isLateComingDeductionAllowed)
           Padding(
@@ -847,7 +802,7 @@ class _AddEditSettingProfileScreenState
                         "",
                         _lateComingForDaysController,
                         "",
-                        maxLength: 3, // e.g. -99 to 999
+                        maxLength: 3,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -862,32 +817,19 @@ class _AddEditSettingProfileScreenState
                   options: [
                     MapEntry("Cut Full Day Minutes",
                         LateComingActionOptions.cutFullDay),
+                    MapEntry("Cut Half Day Minutes",
+                        LateComingActionOptions.cutHalfDay),
                     MapEntry("Mark Absent", LateComingActionOptions.markAbsent),
                     MapEntry("None", LateComingActionOptions.none),
                   ],
                   onChanged: (val) => setState(() => _lateComingAction = val!),
                 ),
                 const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Checkbox(
-                      value: _isRepeatLateComingDeductionAllowed,
-                      onChanged: (val) => setState(
-                          () => _isRepeatLateComingDeductionAllowed = val!),
-                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                    ),
-                    Expanded(
-                      child: InkWell(
-                        onTap: () => setState(() =>
-                            _isRepeatLateComingDeductionAllowed =
-                                !_isRepeatLateComingDeductionAllowed),
-                        child: const Text(
-                            "Is Repeat Late Coming Deduction Allowed (After action taken and condition occurs again.)",
-                            style: TextStyle(fontSize: 14)),
-                      ),
-                    ),
-                  ],
+                _buildCheckboxRow(
+                  "Is Repeat Late Coming Deduction Allowed (After action taken and condition occurs again.)",
+                  _isRepeatLateComingDeductionAllowed,
+                  (val) =>
+                      setState(() => _isRepeatLateComingDeductionAllowed = val!),
                 ),
               ],
             ),
@@ -897,7 +839,6 @@ class _AddEditSettingProfileScreenState
     );
   }
 
-  // --- NEW: Regular Shift Expansion Tile ---
   Widget _buildRegularShiftExpansionTile() {
     return ExpansionTile(
       title: const Text("Regular Shift",
@@ -934,11 +875,12 @@ class _AddEditSettingProfileScreenState
           ],
           onChanged: (val) => setState(() {
             _shiftTypeOption = val!;
-            // Reset other options when type changes
-            if (_shiftTypeOption != ShiftTypeOptions.fix)
+            if (_shiftTypeOption != ShiftTypeOptions.fix) {
               _selectedFixShift = null;
-            if (_shiftTypeOption != ShiftTypeOptions.rotation)
+            }
+            if (_shiftTypeOption != ShiftTypeOptions.rotation) {
               _selectedShiftPattern = null;
+            }
           }),
         ),
         const SizedBox(height: 12),
@@ -953,8 +895,7 @@ class _AddEditSettingProfileScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildDropdownField<String>(
-                  label:
-                      "Shift :*", // Added asterisk for required field indication
+                  label: "Shift :*",
                   value: _selectedFixShift,
                   items: _shiftsList
                       .map((shift) =>
@@ -978,7 +919,7 @@ class _AddEditSettingProfileScreenState
               borderRadius: BorderRadius.circular(4.0),
             ),
             child: _buildDropdownField<String>(
-              label: "Shift Pattern :*", // Added asterisk
+              label: "Shift Pattern :*",
               value: _selectedShiftPattern,
               items: _shiftPatternsList
                   .map((pattern) =>
@@ -993,7 +934,6 @@ class _AddEditSettingProfileScreenState
     );
   }
 
-  // --- NEW: WeeklyOff Details Expansion Tile ---
   Widget _buildWeeklyOffDetailsExpansionTile() {
     return ExpansionTile(
       title: const Text("WeeklyOff Details",
@@ -1016,10 +956,8 @@ class _AddEditSettingProfileScreenState
           ],
           onChanged: (val) => setState(() {
             _weeklyOffTypeOption = val!;
-            // Reset if not regular
             if (_weeklyOffTypeOption != WeeklyOffTypeOptions.regular) {
-              _selectedFirstWeeklyOff =
-                  "Sunday"; // Or null, depending on desired reset state
+              _selectedFirstWeeklyOff = "Sunday";
               _selectedSecondWeeklyOff = "None";
               _selectedFullDayHalfDay = "FullDay";
             }
@@ -1075,7 +1013,6 @@ class _AddEditSettingProfileScreenState
     );
   }
 
-  // --- NEW: Employee Login Details Expansion Tile ---
   Widget _buildEmployeeLoginDetailsExpansionTile() {
     return ExpansionTile(
       title: const Text("Employee Login Details",
@@ -1088,26 +1025,30 @@ class _AddEditSettingProfileScreenState
           const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       tilePadding: const EdgeInsets.symmetric(horizontal: 16.0),
       children: [
-        Row(
-          children: [
-            Checkbox(
-              value: _canUseNonBiometricDevice,
-              onChanged: (val) =>
-                  setState(() => _canUseNonBiometricDevice = val!),
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
-            ),
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() =>
-                    _canUseNonBiometricDevice = !_canUseNonBiometricDevice),
-                child: const Text(
-                    "Employee can use non-biometric device(e.g. mobile/web).",
-                    style: TextStyle(fontSize: 14)),
-              ),
-            ),
-          ],
+        _buildCheckboxRow(
+          "Employee can use non-biometric device(e.g. mobile/web).",
+          _isLoginEnabled,
+          (val) => setState(() => _isLoginEnabled = val ?? false),
         ),
+        if (_isLoginEnabled)
+          Padding(
+            padding: const EdgeInsets.only(left: 20.0, top: 8.0),
+            child: Column(
+              children: [
+                _buildCheckboxRow(
+                  "Can punch (In and out) from non-biometric device(e.g. mobile) from office's geo-fence.",
+                  _canPunchInGeoFence,
+                  (val) => setState(() => _canPunchInGeoFence = val!),
+                ),
+                const SizedBox(height: 4),
+                _buildCheckboxRow(
+                  "Can work from home i.e. punch (In and out) from non-biometric device(e.g. mobile) from any geo location.",
+                  _canPunchFromHome,
+                  (val) => setState(() => _canPunchFromHome = val!),
+                ),
+              ],
+            ),
+          ),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.all(12.0),
@@ -1121,56 +1062,31 @@ class _AddEditSettingProfileScreenState
               const Text("Set Rights:*",
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
               const SizedBox(height: 8),
-              Row(
-                children: [
-                  _buildCheckboxRowItem("View Rights", _viewRights,
-                      (val) => setState(() => _viewRights = val!)),
-                ],
-              ),
+              _buildCheckboxRow("View Rights", _viewRights,
+                  (val) => setState(() => _viewRights = val!)),
               const SizedBox(height: 4),
-              Row(
-                children: [
-                  _buildCheckboxRowItem(
-                      "Can Apply for Regularization",
-                      _canApplyForManualAttendance,
-                      (val) =>
-                          setState(() => _canApplyForManualAttendance = val!)),
-                ],
-              ),
+              _buildCheckboxRow(
+                  "Can Apply for Regularization",
+                  _canApplyForManualAttendance,
+                  (val) => setState(() => _canApplyForManualAttendance = val!)),
               const SizedBox(height: 4),
-              Row(
-                children: [
-                  _buildCheckboxRowItem(
-                      "Can Apply for Leave.",
-                      _canApplyForLeave,
-                      (val) => setState(() => _canApplyForLeave = val!)),
-                ],
-              ),
+              _buildCheckboxRow("Can Apply for Leave.", _canApplyForLeave,
+                  (val) => setState(() => _canApplyForLeave = val!)),
               const SizedBox(height: 4),
-              Row(
-                children: [
-                  _buildCheckboxRowItem(
-                      "Can Apply for Out Door Duty for a day",
-                      _canApplyForOutDoorDuty,
-                      (val) => setState(() => _canApplyForOutDoorDuty = val!)),
-                ],
-              ),
+              _buildCheckboxRow(
+                  "Can Apply for Out Door Duty for a day",
+                  _canApplyForOutDoorDuty,
+                  (val) => setState(() => _canApplyForOutDoorDuty = val!)),
               const SizedBox(height: 4),
-              Row(
-                children: [
-                  _buildCheckboxRowItem(
-                      "Can Apply for Tour/Travelling",
-                      _canApplyForTour,
-                      (val) => setState(() => _canApplyForTour = val!)),
-                ],
-              ),
+              _buildCheckboxRow("Can Apply for Tour/Travelling", _canApplyForTour,
+                  (val) => setState(() => _canApplyForTour = val!)),
             ],
           ),
         ),
-        const SizedBox(height: 8),
       ],
     );
   }
+  // endregion
 
   @override
   Widget build(BuildContext context) {
@@ -1184,7 +1100,7 @@ class _AddEditSettingProfileScreenState
                 fontSize: 18,
                 fontWeight: FontWeight.bold)),
         backgroundColor: Colors.white,
-        elevation: 1, // Slight elevation for definition
+        elevation: 1,
         shadowColor: Colors.grey.shade200,
         iconTheme: const IconThemeData(color: Colors.black87),
         actions: [
@@ -1223,37 +1139,35 @@ class _AddEditSettingProfileScreenState
                   border: OutlineInputBorder(),
                 ),
                 maxLines: 3,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a description';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 16),
-              CheckboxListTile(
-                title: const Text(
-                    'Set as Default Profile (Applicable only for New Employee at the time of enrollment)',
-                    style: TextStyle(fontSize: 14)),
-                value: _isDefaultProfile,
-                onChanged: (bool? value) {
+              _buildCheckboxRow(
+                'Set as Default Profile (Applicable only for New Employee at the time of enrollment)',
+                _isDefaultProfile,
+                (bool? value) {
                   setState(() {
                     _isDefaultProfile = value ?? false;
                   });
                 },
-                controlAffinity: ListTileControlAffinity.leading,
-                contentPadding: EdgeInsets.zero,
-                dense: true,
               ),
-              const SizedBox(height: 16), // Space before new sections
-
-              // --- New Accordion Sections ---
+              const SizedBox(height: 16),
               _buildWorkSettingsExpansionTile(),
               const SizedBox(height: 16),
               _buildWorkMinutesExpansionTile(),
-              // --- End of New Accordion Sections ---
-              const SizedBox(height: 16), // --- NEW ---
-              _buildAdditionalSettingsExpansionTile(), // --- NEW ---
-              const SizedBox(height: 16), // --- NEW ---
-              _buildRegularShiftExpansionTile(), // --- NEW ---
-              const SizedBox(height: 16), // --- NEW ---
-              _buildWeeklyOffDetailsExpansionTile(), // --- NEW ---
-              const SizedBox(height: 16), // --- NEW ---
-              _buildEmployeeLoginDetailsExpansionTile(), // --- NEW ---
+              const SizedBox(height: 16),
+              _buildAdditionalSettingsExpansionTile(),
+              const SizedBox(height: 16),
+              _buildRegularShiftExpansionTile(),
+              const SizedBox(height: 16),
+              _buildWeeklyOffDetailsExpansionTile(),
+              const SizedBox(height: 16),
+              _buildEmployeeLoginDetailsExpansionTile(),
               const SizedBox(height: 24),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -1262,31 +1176,6 @@ class _AddEditSettingProfileScreenState
                     onPressed: () => Navigator.pop(context),
                     child: const Text('Cancel'),
                   ),
-                  if (isEditing) ...[
-                    const SizedBox(width: 16),
-                    OutlinedButton(
-                      onPressed: () {
-                        // Save as logic: treat as new profile (clear id, etc.)
-                        final controller = Get.find<SettingProfileController>();
-                        final now = DateTime.now();
-                        final profile = SettingProfileModel(
-                          profileId: '', // New profile, so no id
-                          profileName: _profileNameController.text,
-                          description: _descriptionController.text,
-                          isDefaultProfile: _isDefaultProfile,
-                          isEmpWeeklyOffAdjustable: false,
-                          isShiftStartFromJoiningDate: true,
-                          changesDoneOn: now.toIso8601String(),
-                          changesDoneOnDateTime: now,
-                          changesDoneBy: controller.currentLoginId,
-                          // TODO: Add new fields as needed
-                        );
-                        controller.createSettingProfile(profile);
-                        Navigator.pop(context);
-                      },
-                      child: const Text('Save as'),
-                    ),
-                  ],
                   const SizedBox(width: 16),
                   ElevatedButton(
                     onPressed: _saveProfile,
@@ -1301,37 +1190,166 @@ class _AddEditSettingProfileScreenState
     );
   }
 
-  void _saveProfile() {
+  void _saveProfile() async {
     if (_formKey.currentState!.validate()) {
-      // TODO: Add validation for new fields if necessary
-      // For example, HH/MM fields for Out Time should be valid time.
-
       final controller = Get.find<SettingProfileController>();
       final now = DateTime.now();
+      final loginId = controller.currentLoginId;
+
+      // --- 1. Build EmployeeSettings ---
+      final employeeSetting = EmployeeSettings(
+        employeeID: '',
+        employeeName: '',
+        type: _getPunchTypeEnumValue(),
+        singlePunchOutTime: _punchType == PunchTypeOptions.single
+            ? '${_singlePunchOutTimeHHController.text.padLeft(2, '0')}:${_singlePunchOutTimeMMController.text.padLeft(2, '0')}'
+            : '00:00',
+        isWorkMinutesCalculationByShift:
+            _workMinutesCalculation == WorkMinutesCalculationOptions.byShiftwise,
+        fullDayMinutes: int.tryParse(_fullDayMinsController.text) ?? 480,
+        halfDayMinutes: int.tryParse(_halfDayMinsController.text) ?? 240,
+        isOverTimeAllowed: _isEmployeeAllowedToDoOverTime,
+        otStartMinutes: _isEmployeeAllowedToDoOverTime
+            ? (int.tryParse(_otStartsMinsController.text) ?? 490)
+            : 0,
+        otGraceMins: _isEmployeeAllowedToDoOverTime
+            ? (int.tryParse(_otGraceMinsController.text) ?? 5)
+            : 0,
+        isOTStartsAtShiftEnd:
+            _overTimeCalculationStartsAt == OverTimeStartOptions.atExactShiftEnd,
+        presentOnWOffOrHoliday: _getPresentOnWOffHolidayStringValue(),
+        leaveNWOffConsider: _leaveContainsWeeklyOff ==
+                LeaveContainsWeeklyOffOptions.leave
+            ? EmployeeSettings.taLeave
+            : EmployeeSettings.taWOff,
+        leaveNHolidayConsider: _leaveContainsHoliday ==
+                LeaveContainsHolidayOptions.leave
+            ? EmployeeSettings.taLeave
+            : EmployeeSettings.taHoliday,
+        wOffNHolidayConsider: _weeklyOffHolidaySameDay ==
+                WeeklyOffHolidaySameDayOptions.weeklyOff
+            ? EmployeeSettings.taWOff
+            : EmployeeSettings.taHoliday,
+        allowedLateComingMinutes:
+            int.tryParse(_allowedLateComingMinutesController.text) ?? 15,
+        allowedEarlyGoingMinutes:
+            int.tryParse(_allowedEarlyGoingMinutesController.text) ?? 15,
+        isAHolidayAMarkA:
+            _absentBeforeAfterHoliday == AbsentBeforeAfterHolidayOptions.absent,
+        isBreakAllowed: _isEmployeeAllowedToTakeBreak,
+        awoffDaysConstant:
+            double.tryParse(_absentDaysForWeeklyOffController.text) ?? 0,
+        isAWoffAMarkA:
+            _weeklyOffAbsentMarking == WeeklyOffAbsentMarkingOptions.aWoffA,
+        isAWOffMarkA:
+            _weeklyOffAbsentMarking == WeeklyOffAbsentMarkingOptions.prefix,
+        isWOffAMarkA:
+            _weeklyOffAbsentMarking == WeeklyOffAbsentMarkingOptions.postfix,
+      );
+
+      // --- 2. Build EmployeeGeneralSettings ---
+      final employeeGeneralSetting = EmployeeGeneralSettings(
+        employeeID: '',
+        employeeName: '',
+        isComingLateNEarlyGoingCalculateOnWOff: _calculateLateEarlyOnWeeklyOff,
+        isBreakMinutesSubtractFromFullDayWork: _subtractLunchFromFullDay,
+        isBreakMinutesSubtractFromHalfDayWork: _subtractLunchFromHalfDay,
+        overTimeCalculations: _getOverTimeCalcEnumValue(),
+        forcePunchOut: _getForcePunchOutEnumValue(),
+        forcePunchDefaultOutTime:
+            _forcePunchOutOption == ForcePunchOutOptions.defaultTime
+                ? '${_defaultForcePunchOutHHController.text.padLeft(2, '0')}:${_defaultForcePunchOutMMController.text.padLeft(2, '0')}'
+                : '00:00',
+        isLateComingDeductionAllowed: _isLateComingDeductionAllowed,
+        lateComingDaysForCutOff:
+            int.tryParse(_lateComingForDaysController.text) ?? -1,
+        actionForLateComing: _getLateComingActionEnumValue(),
+        isRepeatLateComingAllowed: _isRepeatLateComingDeductionAllowed,
+        isRotationalWeeklyOff:
+            _weeklyOffTypeOption == WeeklyOffTypeOptions.rotating,
+      );
+
+      // --- 3. Build EmployeeRegularShifts ---
+      final employeeRegularShift = EmployeeRegularShifts(
+        employeeID: '',
+        employeeName: '',
+        startDate: '',
+        startDateTime: DateTime.now().toIso8601String(),
+        type: _getShiftTypeEnumValue(),
+        shiftID: _shiftTypeOption == ShiftTypeOptions.fix
+            ? _selectedFixShift ?? ''
+            : '',
+        shiftName: '',
+        patternID: _shiftTypeOption == ShiftTypeOptions.rotation
+            ? _selectedShiftPattern ?? ''
+            : '',
+        patternName: '',
+        shiftConstantDays: _shiftConstantDaysController.text,
+      );
+
+      // --- 4. Build EmployeeWOff ---
+      final employeeWOFF = EmployeeWOff(
+        employeeID: '',
+        employeeName: '',
+        firstName: '',
+        firstWOff: _selectedFirstWeeklyOff ?? 'Sunday',
+        secondWOff: _selectedSecondWeeklyOff ?? 'None',
+        isFullDay: _selectedFullDayHalfDay == 'FullDay',
+        wOffPattern: '',
+      );
+
+      // --- 5. Build EmpLogin ---
+      final empLogin = EmpLogin(
+        employeeID: '',
+        employeeName: '',
+        isPasswordSet: false,
+        employeePassword: '',
+        employeePasswordConfirm: '',
+        roleType: '',
+        isEnabled: _isLoginEnabled,
+        canPunchInGeoFence: _canPunchInGeoFence,
+        canPunchFromHome: _canPunchFromHome,
+        empDeviceLogin: null,
+        canView: _viewRights,
+        canApplyForManualAttendance: _canApplyForManualAttendance,
+        canApplyForLeave: _canApplyForLeave,
+        canApplyForTour: _canApplyForTour,
+        canApplyForOutDoor: _canApplyForOutDoorDuty,
+        empLoginModeCreated:
+            CsEmpLoginModeCreated.ViaTAWebOrUtility.index,
+        hasSubordinate: false,
+        listOfSubordinatesEmployeeID: '',
+      );
+
+      // --- 6. Build the final SettingProfileModel ---
       final profile = SettingProfileModel(
         profileId: widget.profile?.profileId ?? '',
         profileName: _profileNameController.text,
         description: _descriptionController.text,
         isDefaultProfile: _isDefaultProfile,
-        isEmpWeeklyOffAdjustable: false, // Default value from original code
-        isShiftStartFromJoiningDate: true, // Default value from original code
+        isEmpWeeklyOffAdjustable: false,
+        isShiftStartFromJoiningDate:
+            _shiftStartDateOption == ShiftStartDateOptions.employeeJoiningDate,
         changesDoneOn: now.toIso8601String(),
         changesDoneOnDateTime: now,
-        changesDoneBy: Get.find<SettingProfileController>().currentLoginId,
-        // TODO: Add new fields from the UI to the SettingProfileModel and pass them here
-        // e.g., presentOnWeeklyOffHoliday: _presentOnWeeklyOffHoliday.toString(),
-        // absentDaysForWeeklyOff: int.tryParse(_absentDaysForWeeklyOffController.text) ?? 0,
-        // punchType: _punchType.toString(),
-        // ... and so on for all new fields
+        changesDoneBy: loginId,
+        employeeSetting: employeeSetting,
+        employeeGeneralSetting: employeeGeneralSetting,
+        employeeRegularShift: employeeRegularShift,
+        employeeWOFF: employeeWOFF,
+        employeeLogin: empLogin,
       );
 
+      bool success = false;
       if (widget.profile != null) {
-        controller.updateSettingProfile(profile);
+        success = await controller.updateSettingProfile(profile);
       } else {
-        controller.createSettingProfile(profile);
+        success = await controller.createSettingProfile(profile);
       }
 
-      Navigator.pop(context);
+      if (success && mounted) {
+        Navigator.pop(context);
+      }
     }
   }
 }
